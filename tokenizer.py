@@ -1,18 +1,7 @@
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from datetime import date, timedelta
 from typing import List, Dict
-
 import re
-import nltk
-import wordninja
 import emoji
-import inflect
-from nltk.corpus import stopwords
-from nltk.stem import PorterStemmer, WordNetLemmatizer
-from nltk.tokenize import word_tokenize, TweetTokenizer
+from nltk.tokenize import TweetTokenizer
 import spacy
 
 
@@ -103,7 +92,6 @@ EMOJI_MAPPING = {
     '🙋': 'question',
     '🙋': 'question',
     '😃': 'joy',
-    '🧚': 'joy',
     '😊': 'joy',
     '😀': 'joy',
     '😄': 'joy',
@@ -185,14 +173,14 @@ STOP_WORDS = ['a', 'about', 'after', 'again', 'all', 'am', 'an', 'and', 'any', '
     'o', 'only', 'or', 'other', 'our', 'out', 'over',
     'p',
     'q',
-    'r'
+    'r',
     's', 'same', 'she', 'should', 'so', 'some',
-    't', 'than', 'that', 'the', 'their', 'them', 'then', 'there', 'these', 'they', 'this', 'to', 'too', "they'll", "they'd"
+    't', 'than', 'that', 'the', 'their', 'them', 'then', 'there', 'these', 'they', 'this', 'to', 'too', "they'll", "they'd",
     'u', 'us',
     'v',
     'w', 'was', 'we', 'were', 'what', 'when', 'where', 'who', 'why', 'will', 'with', 'whom', 'whose', 'which',
     'x',
-    'y', 'you', 'your', 'yourself'
+    'y', 'you', 'your', 'yourself', "you'll", "you'd",
     'z',
 ]
 
@@ -215,7 +203,7 @@ class CustomTokenizer:
     def tokenize(self, text: str, tokenizer: str):
         if tokenizer == 'tweet_tokenizer':
             tokens = self.tweet_tokenizer.tokenize(text)
-            tokens = [token for token in tokens if token.lower() not in self.stop_words]
+            tokens = [token for token in tokens if token not in self.stop_words]
             return tokens
 
     def process_urls(self, text: str, remove=True, url_token='URL'):
@@ -235,14 +223,12 @@ class CustomTokenizer:
         text = self.normalize_whitespace(text)
         return text
     
-
 custom_tokenizer = CustomTokenizer(STOP_WORDS, EMOJI_MAPPING)
-
-text = "Check checked checks this out🍵🔥🤤❤️! 🤦Checking 🍵tim@gmail.com 🐍❤️ $11 http://example.com #Amazing #IAmHappy🍵🔥🤤❤️🍵 @elonmusk $Tesla.🏳️‍🌈 It's not what you'll @r@a think! $TSLA"
+text = "Check checked checks this out🍵🔥🤤❤️! 🤦Checking ⚖️🍵tim@gmail.com 🐍❤️ $11 http://example.com #Covid19 #Amazing #IAmHappy🍵🔥🤤❤️🍵 @elonmusk $Tesla.🏳️‍🌈 It's not what you'll  think @r@a! $TSLA she isn't happy"
 print(text)
 tokenized_text = ' '.join(custom_tokenizer(text))
 tokenized_text
 
 nlp = spacy.load('en_core_web_sm')
-tokens = [token.lemma_ for token in nlp(tokenized_text)]
+tokens = [token.lemma_ for token in nlp(tokenized_text) if token.lemma_ not in STOP_WORDS]
 ' '.join(tokens)
