@@ -1,4 +1,29 @@
 # use the glove.twitter.27B.100d GloVe embeddings
+# Caveat: some words are not known by GloVe
+# covid is NOT an entry!
+# $ is an entry!
+# <email> is NOT an entry!
+# com is an entry!
+# ? is an entry!
+# . is an entry!
+# irl is an entry!
+# <user> is an entry!
+# <repeat> is an entry!
+# <hashtag> is an entry!
+# <url> is an entry!
+# <elong> is an entry!
+# putaindemerde is NOT an entry!
+# 1 is NOT an entry!
+# 1st is NOT an entry!
+# looove is an entry!
+# hello is an entry!
+# helloo is an entry!
+# don't is NOT an entry!
+# I is NOT an entry!
+# $ is an entry!
+# 🤤 is NOT an entry!
+# ❤️ is NOT an entry!
+
 import re
 from typing import Dict, List
 import emoji
