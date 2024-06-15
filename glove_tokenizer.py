@@ -160,4 +160,5 @@ class GloveTokenizer:
         
 
 glove_tokenizer = GloveTokenizer(ABBREVIATION_MAPPING)
-glove_tokenizer("I don't love $$11.05 the https://nlp.stanford.edu new #FunnyRabbit #Tesla #lol mooodel @elonmusk!🤤🤤 helloooo timothee@gmail.com")
+glove_tokenizer("I don't love love $$11.05 the https://nlp.stanford.edu new #FunnyRabbit #Tesla #lol mooodel @elonmusk!!🤤🤤 helloooo timothee@gmail.com")
+# 'i do not love love $$<number> the <url> new <hashtag> funny rabbit <hashtag> tesla <hashtag> lol mooodel <user>! <REPEAT> hello <ELONG> '
