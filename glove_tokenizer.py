@@ -1,3 +1,4 @@
+# use the glove.twitter.27B.100d GloVe embeddings
 import re
 from typing import Dict, List
 import emoji
