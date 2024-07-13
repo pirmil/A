@@ -34,8 +34,15 @@ class MyPCA:
         # check that we are able to reconstruct the full input matrix
         Xt = self.transform(X, k=self.dim, reduce_dim=False, rescale=True)
         assert np.allclose(X, Xt)
+        # check that projecting onto the orthogonal is the same as computing I - P_k @ P_k^T
+        k = self.dim // 2 if self.dim >= 2 else 1
+        X_ortho = self.transform_ortho(X, k, reduce_dim=False, rescale=True)
+        assert np.allclose(X_ortho, self.inverse_standardize(self.standardize(X) @ self.eivecs[:, k:] @ self.eivecs[:, k:].T))
 
     def transform(self, Y: np.ndarray, k: int, reduce_dim: bool, rescale: bool) -> np.ndarray:
+        pass
+
+    def transform_ortho(self, Y: np.ndarray, k: int, reduce_dim: bool, rescale: bool) -> np.ndarray:
         pass
 
     def get_cumulative_explained_variance(self, pct: bool) -> np.ndarray:
@@ -52,6 +59,12 @@ class MyPCA:
             print(f"Loading of the first feature onto the PCs:")
             print(Lk[0])
         return Lk
+    
+    def standardize(self, Y: np.ndarray) -> np.ndarray:
+        pass
+
+    def inverse_standardize(self, Y: np.ndarray) -> np.ndarray:
+        pass
 
 
 class PCAWithCovariance(MyPCA):
@@ -62,7 +75,7 @@ class PCAWithCovariance(MyPCA):
         assert isinstance(X, np.ndarray)
         self.dim = X.shape[1]
         self.mean = X.mean(axis=0)
-        Xc = self.center(X)
+        Xc = self.standardize(X)
         cov = np.cov(Xc, rowvar=False)
         eivals, eivecs = np.linalg.eigh(cov)
         largest_to_smallest = np.argsort(-eivals)
@@ -90,11 +103,11 @@ class PCAWithCovariance(MyPCA):
         """
         assert isinstance(Y, np.ndarray)
         assert k <= self.dim, "The number of PCA components must be less than the data dimension"
-        Ypca = self.center(Y) @ self.eivecs[:, :k]
+        Ypca = self.standardize(Y) @ self.eivecs[:, :k]
         if not reduce_dim:
             Ypca = Ypca @ self.eivecs[:, :k].T
             if rescale:
-                Ypca = self.inverse_center(Ypca)
+                Ypca = self.inverse_standardize(Ypca)
         return Ypca
     
     def transform_ortho(self, Y: np.ndarray, k: int, reduce_dim: bool, rescale=True) -> np.ndarray:
@@ -113,18 +126,19 @@ class PCAWithCovariance(MyPCA):
         """
         assert isinstance(Y, np.ndarray)
         assert k <= self.dim, "The number of PCA components must be less than the data dimension"
-        Ypca_ortho = self.center(Y) @ (np.eye(self.dim) - self.eivecs[:, :k] @ self.eivecs[:, :k].T)
+        Ypca_ortho = self.standardize(Y) @ (np.eye(self.dim) - self.eivecs[:, :k] @ self.eivecs[:, :k].T)
         if reduce_dim:
             Ypca_ortho = Ypca_ortho @ self.eivecs[:, :k]
+            assert np.allclose(Ypca_ortho, np.zeros_like(Ypca_ortho))
         elif rescale:
-            Ypca_ortho = self.inverse_center(Ypca_ortho)
+            Ypca_ortho = self.inverse_standardize(Ypca_ortho)
         return Ypca_ortho
     
-    def center(self, Y: np.ndarray) -> np.ndarray:
+    def standardize(self, Y: np.ndarray) -> np.ndarray:
         assert Y.shape[1] == self.dim, "Input data does not have the correct dimension"
         return Y - self.mean[np.newaxis, :]
     
-    def inverse_center(self, Y: np.ndarray) -> np.ndarray:
+    def inverse_standardize(self, Y: np.ndarray) -> np.ndarray:
         assert Y.shape[1] == self.dim, "Input data does not have the correct dimension"
         return Y + self.mean[np.newaxis, :]
 
@@ -192,6 +206,7 @@ class PCAWithCorrelation(MyPCA):
         Ypca_ortho = self.standardize(Y) @ (np.eye(self.dim) - self.eivecs[:, :k] @ self.eivecs[:, :k].T)
         if reduce_dim:
             Ypca_ortho = Ypca_ortho @ self.eivecs[:, :k]
+            assert np.allclose(Ypca_ortho, np.zeros_like(Ypca_ortho))
         elif rescale:
             Ypca_ortho = self.inverse_standardize(Ypca_ortho)
         return Ypca_ortho
@@ -311,7 +326,7 @@ def main(seed=42):
     speed_test_1(X, Y, k)
     speed_test_2(X, Y, k)
 
-    print(f"\nSuccessfully replicated sklearn PCA!\n")
+    print(f"\nSuccessfully replicated sklearn PCA! The difference in speed comes from the fact that sklearn.PCA only computes n_components eigenvectors while MyPCA computes all eigenvectors.\n")
     print(f"Conclusion: Use in priority the following settings:")
     print(f"transform(Y, k, reduce_dim=True) to get the same output as sklearn.PCA().transform()")
     print(f"transform(Y, k, reduce_dim=False, rescale=True) to get the same output as sklearn.PCA().inverse_transform(transform())")
