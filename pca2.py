@@ -3,6 +3,9 @@ This implementation of the PCA is more flexible than sklearn's implementation si
 On the other hand, sklearn's `pca.transform` will return a n x n_components matrix, which is the same using `my_pca.transform(reduce_dim=True)`
 """
 import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from time import time
 
 def transform_matrix_v1(matrix: np.ndarray):
     """
@@ -201,29 +204,21 @@ class PCAWithCorrelation(MyPCA):
         assert Y.shape[1] == self.dim, "Input data does not have the correct dimension"
         return Y * self.std[np.newaxis, :] + self.mean[np.newaxis, :]
     
-
-def main(seed=42):
-    from sklearn.decomposition import PCA
-    from sklearn.preprocessing import StandardScaler
-
-    n, d, k = 15000, 5, 3
-    n_prime = 300
-    np.random.seed(seed)
-    X = np.random.randn(n, d)
-    Y = np.random.randn(n_prime, d)
-
+def test_reduce_dim_cov(X: np.ndarray, Y: np.ndarray, k: int):
     pca_cov = PCAWithCovariance()
     pca_cov.fit(X, verbose=True)
-    Ycov_reduced = pca_cov.transform(Y, k, reduce_dim=True)
+    Ycov_reduced = pca_cov.transform(Y, k, reduce_dim=True, rescale=None)
 
     pca_sklearn = PCA(n_components=k)
     pca_sklearn.fit(X)
-    Y_sklearn = pca_sklearn.transform(Y)
+    Y_sklearn = pca_sklearn.transform(Y)   
+
     assert np.allclose(Y_sklearn, Ycov_reduced)
 
+def test_reduce_dim_corr(X: np.ndarray, Y: np.ndarray, k: int):
     pca_corr = PCAWithCorrelation()
     pca_corr.fit(X, verbose=True)
-    Ycorr_reduced = pca_corr.transform(Y, k, reduce_dim=True)
+    Ycorr_reduced = pca_corr.transform(Y, k, reduce_dim=True, rescale=None)
 
     pca_sklearn = PCA(n_components=k)
     scaler = StandardScaler()
@@ -231,9 +226,97 @@ def main(seed=42):
     pca_sklearn.fit(X_scaled)
     Y_scaled = scaler.transform(Y)
     Ycorr_sklearn = pca_sklearn.transform(Y_scaled)
+
     assert np.allclose(Ycorr_sklearn, Ycorr_reduced)
 
-    print(f"Successfully replicated sklearn PCA!")
+def test_project_and_rescale_cov(X: np.ndarray, Y: np.ndarray, k: int):
+    pca_cov = PCAWithCovariance()
+    pca_cov.fit(X, verbose=True)
+    Ycov_rescaled = pca_cov.transform(Y, k, reduce_dim=False, rescale=True)
+
+    pca_sklearn = PCA(n_components=k)
+    pca_sklearn.fit(X)
+    Y_sklearn = pca_sklearn.inverse_transform(pca_sklearn.transform(Y))
+
+    assert np.allclose(Y_sklearn, Ycov_rescaled)
+
+    Ycov_centered = pca_cov.transform(Y, k, reduce_dim=False, rescale=False)
+    assert np.allclose(Y_sklearn, Ycov_centered + pca_cov.mean)
+
+def test_project_and_rescale_corr(X: np.ndarray, Y: np.ndarray, k: int):
+    pca_corr = PCAWithCorrelation()
+    pca_corr.fit(X, verbose=True)
+    Ycorr_rescaled = pca_corr.transform(Y, k, reduce_dim=False, rescale=True)
+
+    pca_sklearn = PCA(n_components=k)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    pca_sklearn.fit(X_scaled)
+    Y_scaled = scaler.transform(Y)
+    Ycorr_sklearn = scaler.inverse_transform(pca_sklearn.inverse_transform(pca_sklearn.transform(Y_scaled)))
+
+    assert np.allclose(Ycorr_sklearn, Ycorr_rescaled)
+
+    Ycorr_standardized = pca_corr.transform(Y, k, reduce_dim=False, rescale=False)
+    assert np.allclose(Ycorr_sklearn, Ycorr_standardized * pca_corr.std + pca_corr.mean)    
+
+def speed_test_1(X, Y, k):
+    print("\nSpeed test 1")
+    start_time = time()
+    pca_cov = PCAWithCovariance()
+    pca_cov.fit(X, verbose=False)
+    Ycov_reduced = pca_cov.transform(Y, k, reduce_dim=True, rescale=None)
+    print(f"MyPCA: {time() - start_time:.3f} seconds")
+
+    start_time = time()
+    pca_sklearn = PCA(n_components=k)
+    pca_sklearn.fit(X)
+    Y_sklearn = pca_sklearn.transform(Y)
+    print(f"sklearn.PCA: {time() - start_time:.3f} seconds")
+
+    assert np.allclose(Y_sklearn, Ycov_reduced)
+
+def speed_test_2(X, Y, k):
+    print("\nSpeed test 2")
+    start_time = time()
+    pca_corr = PCAWithCorrelation()
+    pca_corr.fit(X, verbose=False)
+    Ycorr_rescaled = pca_corr.transform(Y, k, reduce_dim=False, rescale=True)
+    print(f"MyPCA: {time() - start_time:.3f} seconds")
+
+    start_time = time()
+    pca_sklearn = PCA(n_components=k)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    pca_sklearn.fit(X_scaled)
+    Y_scaled = scaler.transform(Y)
+    Ycorr_sklearn = scaler.inverse_transform(pca_sklearn.inverse_transform(pca_sklearn.transform(Y_scaled)))
+    print(f"sklearn.PCA: {time() - start_time:.3f} seconds")
+
+    assert np.allclose(Ycorr_sklearn, Ycorr_rescaled)
+
+def main(seed=42):
+
+    n, d, k = 300000, 5, 3
+    n_prime = 5000
+    np.random.seed(seed)
+    X = np.random.randn(n, d)
+    Y = np.random.randn(n_prime, d)
+
+    test_reduce_dim_cov(X, Y, k)
+    test_reduce_dim_corr(X, Y, k)
+    test_project_and_rescale_cov(X, Y, k)
+    test_project_and_rescale_corr(X, Y, k)
+
+    speed_test_1(X, Y, k)
+    speed_test_2(X, Y, k)
+
+    print(f"\nSuccessfully replicated sklearn PCA!\n")
+    print(f"Conclusion: Use in priority the following settings:")
+    print(f"transform(Y, k, reduce_dim=True) to get the same output as sklearn.PCA().transform()")
+    print(f"transform(Y, k, reduce_dim=False, rescale=True) to get the same output as sklearn.PCA().inverse_transform(transform())")
+    print(f"No need to worry about using a StandardScaler because it is included in the PCAWithCorrelation class")
+    print(f"Use transform_ortho(Y, k, reduce_dim=True) and transform_ortho(Y, k, reduce_dim=False, rescale=True) to project onto orthogonals!")
 
 if __name__ == '__main__':
     main()
