@@ -29,10 +29,10 @@ class MyPCA:
         for i in range(self.dim):
             assert np.allclose(cov @ self.eivecs[:, i], self.eivals[i] * self.eivecs[:, i])
         # check that we are able to reconstruct the full input matrix
-        Xt = self.transform(X, k=self.dim, reduce_dim=False)
+        Xt = self.transform(X, k=self.dim, reduce_dim=False, unstandardize=True)
         assert np.allclose(X, Xt)
 
-    def transform(self, Y: np.ndarray, k: int, reduce_dim: bool) -> np.ndarray:
+    def transform(self, Y: np.ndarray, k: int, reduce_dim: bool, unstandardize: bool) -> np.ndarray:
         pass
 
     def get_cumulative_explained_variance(self, pct: bool) -> np.ndarray:
@@ -49,6 +49,7 @@ class MyPCA:
             print(f"Loading of the first feature onto the PCs:")
             print(Lk[0])
         return Lk
+
 
 class PCAWithCovariance(MyPCA):
     def __init__(self):
@@ -68,8 +69,9 @@ class PCAWithCovariance(MyPCA):
         if verbose:
             self.run_tests(X, Xc, cov)
             print(f"Successfully ran all tests!")
+        
 
-    def transform(self, Y: np.ndarray, k: int, reduce_dim: bool) -> np.ndarray:
+    def transform(self, Y: np.ndarray, k: int, reduce_dim: bool, unstandardize=True) -> np.ndarray:
         """
         Transforms the input data using PCA.
 
@@ -87,10 +89,12 @@ class PCAWithCovariance(MyPCA):
         assert k <= self.dim, "The number of PCA components must be less than the data dimension"
         Ypca = self.center(Y) @ self.eivecs[:, :k]
         if not reduce_dim:
-            Ypca = self.inverse_center(Ypca @ self.eivecs[:, :k].T)
+            Ypca = Ypca @ self.eivecs[:, :k].T
+            if unstandardize:
+                Ypca = self.inverse_center(Ypca)
         return Ypca
     
-    def transform_ortho(self, Y: np.ndarray, k: int, reduce_dim: bool) -> np.ndarray:
+    def transform_ortho(self, Y: np.ndarray, k: int, reduce_dim: bool, unstandardize=True) -> np.ndarray:
         """
         Transforms the input data using an orthogonal complement projection based on PCA.
 
@@ -109,7 +113,7 @@ class PCAWithCovariance(MyPCA):
         Ypca_ortho = self.center(Y) @ (np.eye(self.dim) - self.eivecs[:, :k] @ self.eivecs[:, :k].T)
         if reduce_dim:
             Ypca_ortho = Ypca_ortho @ self.eivecs[:, :k]
-        else:
+        elif unstandardize:
             Ypca_ortho = self.inverse_center(Ypca_ortho)
         return Ypca_ortho
     
@@ -141,7 +145,7 @@ class PCAWithCorrelation(MyPCA):
             self.run_tests(X, Xcr, cov)
             print(f"Successfully ran all tests!")
         
-    def transform(self, Y: np.ndarray, k: int, reduce_dim: bool) -> np.ndarray:
+    def transform(self, Y: np.ndarray, k: int, reduce_dim: bool, unstandardize=True) -> np.ndarray:
         """
         Transforms the input data using PCA.
 
@@ -160,10 +164,12 @@ class PCAWithCorrelation(MyPCA):
         assert k <= self.dim, "The number of PCA components must be less than the data dimension"
         Ypca = self.standardize(Y) @ self.eivecs[:, :k]
         if not reduce_dim:
-            Ypca = self.inverse_standardize(Ypca @ self.eivecs[:, :k].T)
+            Ypca = Ypca @ self.eivecs[:, :k].T
+            if unstandardize:
+                Ypca = self.inverse_standardize(Ypca)
         return Ypca
     
-    def transform_ortho(self, Y: np.ndarray, k: int, reduce_dim: bool) -> np.ndarray:
+    def transform_ortho(self, Y: np.ndarray, k: int, reduce_dim: bool, unstandardize=True) -> np.ndarray:
         """
         Transforms the input data using an orthogonal complement projection based on PCA.
 
@@ -183,7 +189,7 @@ class PCAWithCorrelation(MyPCA):
         Ypca_ortho = self.standardize(Y) @ (np.eye(self.dim) - self.eivecs[:, :k] @ self.eivecs[:, :k].T)
         if reduce_dim:
             Ypca_ortho = Ypca_ortho @ self.eivecs[:, :k]
-        else:
+        elif unstandardize:
             Ypca_ortho = self.inverse_standardize(Ypca_ortho)
         return Ypca_ortho
     
