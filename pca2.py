@@ -219,7 +219,7 @@ def test_project_and_rescale_corr(X: np.ndarray, Y: np.ndarray, k: int):
     Ycorr_standardized = pca_corr.transform(Y, k, reduce_dim=False, rescale=False)
     assert np.allclose(Ycorr_sklearn, Ycorr_standardized * pca_corr.std + pca_corr.mean)    
 
-def speed_test_1(X, Y, k):
+def speed_test_1(X: np.ndarray, Y: np.ndarray, k: int):
     print("\nSpeed test 1")
     start_time = time()
     pca_cov = PCAWithCovariance()
@@ -235,7 +235,7 @@ def speed_test_1(X, Y, k):
 
     assert np.allclose(Y_sklearn, Ycov_reduced)
 
-def speed_test_2(X, Y, k):
+def speed_test_2(X: np.ndarray, Y: np.ndarray, k: int):
     print("\nSpeed test 2")
     start_time = time()
     pca_corr = PCAWithCorrelation()
@@ -255,7 +255,7 @@ def speed_test_2(X, Y, k):
     assert np.allclose(Ycorr_sklearn, Ycorr_rescaled)
 
 
-def test_ortho(X: np.ndarray, Y: np.ndarray, k):
+def test_ortho(X: np.ndarray, Y: np.ndarray, k: int):
     pca_cov = PCAWithCovariance()
     pca_cov.fit(X, verbose=False)
     Ycov_rescaled = pca_cov.transform_ortho(Y, k, reduce_dim=False, rescale=True)
@@ -266,6 +266,10 @@ def test_ortho(X: np.ndarray, Y: np.ndarray, k):
     Y_sklearn = (Y - pca_sklearn.mean_) @ (np.eye(Y.shape[1]) - comp.T @ comp) + pca_sklearn.mean_
 
     assert np.allclose(Ycov_rescaled, Y_sklearn)
+
+    Ycov = pca_cov.transform_ortho(Y, k, reduce_dim=False, rescale=False)
+    assert np.allclose(Ycov, (Y - pca_sklearn.mean_) @ (np.eye(Y.shape[1]) - comp.T @ comp))
+
 
     pca_corr = PCAWithCorrelation()
     pca_corr.fit(X, verbose=False)
@@ -280,6 +284,10 @@ def test_ortho(X: np.ndarray, Y: np.ndarray, k):
     Y_sklearn = scaler.inverse_transform(Y_scaled @ (np.eye(Y.shape[1]) - comp.T @ comp))
 
     assert np.allclose(Ycorr_rescaled, Y_sklearn)
+
+    Ycorr = pca_corr.transform_ortho(Y, k, reduce_dim=False, rescale=False)
+    assert np.allclose(Ycorr, Y_scaled @ (np.eye(Y.shape[1]) - comp.T @ comp))
+
 
 def main(d=5, k=3, seed=42):
 
