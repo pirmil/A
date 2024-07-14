@@ -39,12 +39,6 @@ class MyPCA:
         X_ortho = self.transform_ortho(X, k, reduce_dim=False, rescale=True)
         assert np.allclose(X_ortho, self.inverse_standardize(self.standardize(X) @ self.eivecs[:, k:] @ self.eivecs[:, k:].T))
 
-    def transform(self, Y: np.ndarray, k: int, reduce_dim: bool, rescale: bool) -> np.ndarray:
-        pass
-
-    def transform_ortho(self, Y: np.ndarray, k: int, reduce_dim: bool, rescale: bool) -> np.ndarray:
-        pass
-
     def get_cumulative_explained_variance(self, pct: bool) -> np.ndarray:
         cum_var = np.cumsum(self.eivals)
         if pct:
@@ -60,33 +54,6 @@ class MyPCA:
             print(Lk[0])
         return Lk
     
-    def standardize(self, Y: np.ndarray) -> np.ndarray:
-        pass
-
-    def inverse_standardize(self, Y: np.ndarray) -> np.ndarray:
-        pass
-
-
-class PCAWithCovariance(MyPCA):
-    def __init__(self):
-        super().__init__()
-
-    def fit(self, X: np.ndarray, verbose=True):
-        assert isinstance(X, np.ndarray)
-        self.dim = X.shape[1]
-        self.mean = X.mean(axis=0)
-        Xc = self.standardize(X)
-        cov = np.cov(Xc, rowvar=False)
-        eivals, eivecs = np.linalg.eigh(cov)
-        largest_to_smallest = np.argsort(-eivals)
-        self.eivals = eivals[largest_to_smallest]
-        self.eivecs = eivecs[:, largest_to_smallest]
-        self.eivecs = transform_matrix_v1(self.eivecs)
-        if verbose:
-            self.run_tests(X, Xc, cov)
-            print(f"Successfully ran all tests!")
-        
-
     def transform(self, Y: np.ndarray, k: int, reduce_dim: bool, rescale=True) -> np.ndarray:
         """
         Transforms the input data using PCA.
@@ -133,6 +100,32 @@ class PCAWithCovariance(MyPCA):
         elif rescale:
             Ypca_ortho = self.inverse_standardize(Ypca_ortho)
         return Ypca_ortho
+    
+    def standardize(self, Y: np.ndarray) -> np.ndarray:
+        pass
+
+    def inverse_standardize(self, Y: np.ndarray) -> np.ndarray:
+        pass
+
+
+class PCAWithCovariance(MyPCA):
+    def __init__(self):
+        super().__init__()
+
+    def fit(self, X: np.ndarray, verbose=True):
+        assert isinstance(X, np.ndarray)
+        self.dim = X.shape[1]
+        self.mean = X.mean(axis=0)
+        Xc = self.standardize(X)
+        cov = np.cov(Xc, rowvar=False)
+        eivals, eivecs = np.linalg.eigh(cov)
+        largest_to_smallest = np.argsort(-eivals)
+        self.eivals = eivals[largest_to_smallest]
+        self.eivecs = eivecs[:, largest_to_smallest]
+        self.eivecs = transform_matrix_v1(self.eivecs)
+        if verbose:
+            self.run_tests(X, Xc, cov)
+            print(f"Successfully ran all tests!")
     
     def standardize(self, Y: np.ndarray) -> np.ndarray:
         assert Y.shape[1] == self.dim, "Input data does not have the correct dimension"
@@ -161,55 +154,6 @@ class PCAWithCorrelation(MyPCA):
         if verbose:
             self.run_tests(X, Xcr, cov)
             print(f"Successfully ran all tests!")
-        
-    def transform(self, Y: np.ndarray, k: int, reduce_dim: bool, rescale=True) -> np.ndarray:
-        """
-        Transforms the input data using PCA.
-
-        Parameters:
-        Y (np.ndarray): The input data matrix of shape (n_samples, dim).
-        k (int): The number of principal components to retain.
-        reduce_dim (bool): If True, the output will have reduced dimensionality (n_samples, k).
-                        If False, the output will be projected back to the original dimensionality (n_samples, dim).
-
-        Returns:
-        np.ndarray: The transformed data matrix. Its shape will be (n_samples, k) if reduce_dim is True,
-                    otherwise it will be (n_samples, dim)
-        """
-        assert isinstance(Y, np.ndarray)
-        assert Y.shape[1] == self.dim, "Input data does not have the correct dimension"
-        assert k <= self.dim, "The number of PCA components must be less than the data dimension"
-        Ypca = self.standardize(Y) @ self.eivecs[:, :k]
-        if not reduce_dim:
-            Ypca = Ypca @ self.eivecs[:, :k].T
-            if rescale:
-                Ypca = self.inverse_standardize(Ypca)
-        return Ypca
-    
-    def transform_ortho(self, Y: np.ndarray, k: int, reduce_dim: bool, rescale=True) -> np.ndarray:
-        """
-        Transforms the input data using an orthogonal complement projection based on PCA.
-
-        Parameters:
-        Y (np.ndarray): The input data matrix of shape (n_samples, dim).
-        k (int): The number of principal components to retain in the orthogonal complement.
-        reduce_dim (bool): If True, the output will have reduced dimensionality (n_samples, k).
-                        If False, the output will be projected back to the original dimensionality (n_samples, dim).
-
-        Returns:
-        np.ndarray: The transformed data matrix. Its shape will be (n_samples, k) if reduce_dim is True,
-                    otherwise it will be (n_samples, dim).
-        """
-        assert isinstance(Y, np.ndarray)
-        assert Y.shape[1] == self.dim, "Input data does not have the correct dimension"
-        assert k <= self.dim, "The number of PCA components must be less than the data dimension"
-        Ypca_ortho = self.standardize(Y) @ (np.eye(self.dim) - self.eivecs[:, :k] @ self.eivecs[:, :k].T)
-        if reduce_dim:
-            Ypca_ortho = Ypca_ortho @ self.eivecs[:, :k]
-            assert np.allclose(Ypca_ortho, np.zeros_like(Ypca_ortho))
-        elif rescale:
-            Ypca_ortho = self.inverse_standardize(Ypca_ortho)
-        return Ypca_ortho
     
     def standardize(self, Y: np.ndarray) -> np.ndarray:
         assert Y.shape[1] == self.dim, "Input data does not have the correct dimension"
@@ -310,9 +254,36 @@ def speed_test_2(X, Y, k):
 
     assert np.allclose(Ycorr_sklearn, Ycorr_rescaled)
 
-def main(seed=42):
 
-    n, d, k = 300000, 5, 3
+def test_ortho(X: np.ndarray, Y: np.ndarray, k):
+    pca_cov = PCAWithCovariance()
+    pca_cov.fit(X, verbose=False)
+    Ycov_rescaled = pca_cov.transform_ortho(Y, k, reduce_dim=False, rescale=True)
+
+    pca_sklearn = PCA(n_components=k)
+    pca_sklearn.fit(X)
+    comp = pca_sklearn.components_
+    Y_sklearn = (Y - pca_sklearn.mean_) @ (np.eye(Y.shape[1]) - comp.T @ comp) + pca_sklearn.mean_
+
+    assert np.allclose(Ycov_rescaled, Y_sklearn)
+
+    pca_corr = PCAWithCorrelation()
+    pca_corr.fit(X, verbose=False)
+    Ycorr_rescaled = pca_corr.transform_ortho(Y, k, reduce_dim=False, rescale=True)
+
+    pca_sklearn = PCA(n_components=k)
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    pca_sklearn.fit(X_scaled)
+    Y_scaled = scaler.transform(Y)
+    comp = pca_sklearn.components_
+    Y_sklearn = scaler.inverse_transform(Y_scaled @ (np.eye(Y.shape[1]) - comp.T @ comp))
+
+    assert np.allclose(Ycorr_rescaled, Y_sklearn)
+
+def main(d=5, k=3, seed=42):
+
+    n = 300000
     n_prime = 5000
     np.random.seed(seed)
     X = np.random.randn(n, d)
@@ -322,6 +293,7 @@ def main(seed=42):
     test_reduce_dim_corr(X, Y, k)
     test_project_and_rescale_cov(X, Y, k)
     test_project_and_rescale_corr(X, Y, k)
+    test_ortho(X, Y, k)
 
     speed_test_1(X, Y, k)
     speed_test_2(X, Y, k)
