@@ -23,7 +23,7 @@ def get_word_counts(sentences: List[str]):
     word_counts = [len(sentence.strip().split()) for sentence in sentences]
     return word_counts
 
-def get_embeddings(input_texts, model: nn.Module, tokenizer, device):
+def get_embeddings(input_texts: List[str], model: nn.Module, tokenizer, device):
     batch_dict = tokenizer(input_texts, max_length=8192, padding=True, truncation=True, return_tensors='pt').to(device)
     with torch.no_grad():
         outputs = model(**batch_dict)
