@@ -59,5 +59,5 @@ def create_rolling(df: pd.DataFrame, windows):
         df[f'Sent_{w}'] = df['Sent'].rolling(w, min_periods=1).mean()
     return df
 
-df.groupby('id_qis').apply(create_rolling, windows=['7D', '30D'], include_groups=False)
+df.groupby('id_qis').apply(create_rolling, windows=['7D', '30D'], include_groups=False).swaplevel(i='id_qis', j='date').sort_index()
 # df.groupby('id_qis').apply(func, include_groups=False)
